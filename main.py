@@ -101,6 +101,7 @@ class HMM:
     suma = 0
     for i in range(self.N):
       suma+=fwd[i][len(o)-1]
+    print(suma)
     return suma
   def backward(self, o):
     bwd = []
@@ -140,7 +141,6 @@ class HMM:
       if o[i] in v:
         self.b[i][self.v.index(o[i])] = 1/o.count(o[i])
   def entrenamiento(self, o):
-    prob = 0
     self.procesar_observaciones(o)
     #var fordward
     fwd = []
@@ -153,36 +153,113 @@ class HMM:
       fwd[i][0] = self.pi[i]*self.b[i][self.v.index(o[0])]
     #Induccion:
     for j in range(self.N):
-      for t in range(len(o)-1):
+      for i in range(self.N):
         aux = []
-        for i in range(self.N):
+        for t in range(len(o)-1):
           aux.append(fwd[i][t]*self.A[i][j]) 
         fwd[j][t+1] =  sum(aux) * self.b[j][self.v.index(o[t+1])]
-    print(fwd)
     #Backward
     bwd = []
     for i in range(self.N):
       bwd.append([])
       for j in range(len(o)):
         bwd[i].append(0)
-    print(bwd)
+    
     #Iniciacion:
     for i in range(self.N):
       bwd[i][len(o)-1] = 1
-    print(bwd)
+    
     #Induccion:
     for i in range(self.N):
-      for t in reversed(range(len(o)-1)):
+      for j in range(self.N):
         aux = []
-        for j in range(self.N):
+        for t in reversed(range(len(o)-1)):
           aux.append(self.A[i][j]*self.b[j][self.v.index(o[t+1])]*bwd[j][t+1])
         bwd[i][t] = sum(aux)
-
+    
+    #definiendo la variable ephsilon
+    E = []
+    for i in range(self.N):
+      E.append([])
+      for j in range(self.N):
+        E[i].append([])
+        for t in range(len(o)):
+          E[i][j].append(0)
+    prob = 0
+    for t in range(len(o)-1):
+      for i in range(self.N):
+        for j in range(self.N):      
+          prob+=fwd[i][t]*self.A[i][j]*self.b[j][self.v.index(o[t+1])]*bwd[j][t+1]
+    print('b', self.b)
+    print('A', self.A)
+    print('PI', self.pi)
+    print('fwd', fwd)
+    print('bwd', bwd)
+    print('prob', prob)
+    for i in range(self.N):
+      for j in range(self.N):
+        for t in range(len(o)-1):
+          E[i][j][t] = (fwd[i][t]*self.A[i][j]*self.b[j][self.v.index(o[t+1])]*bwd[j][t+1])/prob
+    G = []
+    for i in range(self.N):
+      G.append([])
+      for t in range(len(o)):
+        G[i].append(0)
+    for i in range(self.N):
+      for t in range(len(o)):
+        suma = 0
+        for j in range(self.N):
+          suma+=E[i][j][t]
+        G[i][t] = suma
+    pi = []
+    for i in range(self.N):
+      pi.append(G[i][0])
+    self.pi = pi
+    A = []
+    for i in range(self.N):
+      A.append([])
+      for j in range(self.N):
+        A[i].append(0)
+    for i in range(self.N):
+      for j in range(self.N):
+        sumNum = 0
+        sumDen = 0
+        for t in range(len(o)-1):
+          sumNum+=E[i][j][t]
+          sumDen+=G[i][t]
+        A[i][j] = sumNum/sumDen
+    b = []
+    for i in range(self.N):
+      b.append([])
+      for j in range(len(self.v)):
+        b[i].append(0)
+    for i in range(self.N):
+      for k in range(self.N):
+        sumNum = 0
+        sumDen = 0
+        for t in range(len(o)-1):
+          v = 1 if o[t] == self.v[k] else 0
+          sumNum+=G[i][t] * v
+        for t in range(len(o)):
+          sumDen+=G[i][t]
+        b[j][k] = sumNum/sumDen
+    self.b = b
+        
 # guardar_observaciones(ruta="BD/detener/", num_ventanas=3, dir_obs="observaciones/obs_detener.txt")
 # guardar_observaciones(ruta="BD/arrancar/", num_ventanas=3, dir_obs="observaciones/obs_arrancar.txt")
 # guardar_observaciones(ruta="BD/preparados/", num_ventanas=4, dir_obs="observaciones/obs_preparados.txt")
-h = HMM(3,[[1,0,0],[0,1,0],[0,0,1]],[1/3, 1/3, 1/3])
-h.A = [[0.25,0.50,0.25],[0.5,0.3,0.2],[1/3,1/3,1/3]]
-h.b = [[0.25,1,0],[0.25,0,1],[0.5,0,0]]
-h.v = [1,2,3]
-h.entrenamiento([1,2,3])
+# Harr = HMM(3, [[0.5,0,0],[0.5,0.5,0.7],[0,0.5,0.3]], [1/3, 1/3, 1/3])
+# obs_arr = cargar_observaciones("observaciones/obs_arrancar.txt")
+# aud_ent = obs_arr[0]
+# for i in obs_arr:
+#   Harr.entrenamiento(i)
+
+# Hdet = HMM(3, [[1,0,0],[0,1,0],[0,0,1]], [1/3, 1/3, 1/3])
+# obs_ent = cargar_observaciones("observaciones/obs_detener.txt")
+# for i in obs_ent:
+#   Hdet.entrenamiento(i)
+
+# Harr.forward(aud_ent)
+# Hdet.forward(aud_ent)
+h = HMM(2, [[1,0],[0,1]], [1/2, 1/2])
+h.entrenamiento([0,1])
